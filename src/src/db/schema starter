@@ -1,0 +1,1 @@
+npm run migrate:create -- init_core_tables
