@@ -1,0 +1,2 @@
+npm i express pg dotenv cors helmet zod
+npm i -D nodemon node-pg-migrate
