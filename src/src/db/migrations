@@ -1,0 +1,89 @@
+export const shorthands = undefined;
+
+export async function up(pgm) {
+  pgm.createExtension("pgcrypto", { ifNotExists: true });
+
+  pgm.createTable("tenants", {
+    id: { type: "uuid", primaryKey: true, default: pgm.func("gen_random_uuid()") },
+    name: { type: "text", notNull: true },
+    tenant_type: { type: "text", notNull: true, default: "INTERNAL" },
+    features_json: { type: "jsonb", notNull: true, default: pgm.func("'{}'::jsonb") },
+    created_at: { type: "timestamptz", notNull: true, default: pgm.func("now()") }
+  });
+
+  pgm.createTable("sites", {
+    id: { type: "uuid", primaryKey: true, default: pgm.func("gen_random_uuid()") },
+    tenant_id: { type: "uuid", notNull: true, references: "tenants(id)", onDelete: "CASCADE" },
+    name: { type: "text", notNull: true },
+    canonical_domain: { type: "text", notNull: true },
+    gsc_property: { type: "text" },
+    ga4_property: { type: "text" },
+    timezone: { type: "text", notNull: true, default: "Europe/London" },
+    created_at: { type: "timestamptz", notNull: true, default: pgm.func("now()") }
+  });
+
+  pgm.createTable("pages", {
+    id: { type: "uuid", primaryKey: true, default: pgm.func("gen_random_uuid()") },
+    site_id: { type: "uuid", notNull: true, references: "sites(id)", onDelete: "CASCADE" },
+    url: { type: "text", notNull: true },
+    title: { type: "text" },
+    meta_description: { type: "text" },
+    h1: { type: "text" },
+    status_code: { type: "int" },
+    indexable: { type: "boolean", default: true },
+    canonical_url: { type: "text" },
+    word_count: { type: "int" },
+    content_hash: { type: "text" },
+    last_crawled_at: { type: "timestamptz" },
+    created_at: { type: "timestamptz", notNull: true, default: pgm.func("now()") },
+    updated_at: { type: "timestamptz", notNull: true, default: pgm.func("now()") }
+  });
+
+  pgm.addConstraint("pages", "pages_site_url_unique", {
+    unique: ["site_id", "url"]
+  });
+
+  pgm.createTable("issues", {
+    id: { type: "uuid", primaryKey: true, default: pgm.func("gen_random_uuid()") },
+    site_id: { type: "uuid", notNull: true, references: "sites(id)", onDelete: "CASCADE" },
+    page_id: { type: "uuid", references: "pages(id)", onDelete: "SET NULL" },
+    issue_type: { type: "text", notNull: true },
+    severity: { type: "text", notNull: true },     // critical|warning|info
+    status: { type: "text", notNull: true, default: "open" }, // open|snoozed|resolved
+    first_seen_at: { type: "timestamptz", notNull: true, default: pgm.func("now()") },
+    last_seen_at: { type: "timestamptz", notNull: true, default: pgm.func("now()") },
+    evidence_json: { type: "jsonb", notNull: true, default: pgm.func("'{}'::jsonb") },
+    recommended_fix_json: { type: "jsonb", notNull: true, default: pgm.func("'{}'::jsonb") },
+    created_at: { type: "timestamptz", notNull: true, default: pgm.func("now()") },
+    updated_at: { type: "timestamptz", notNull: true, default: pgm.func("now()") }
+  });
+
+  pgm.createTable("tasks", {
+    id: { type: "uuid", primaryKey: true, default: pgm.func("gen_random_uuid()") },
+    site_id: { type: "uuid", notNull: true, references: "sites(id)", onDelete: "CASCADE" },
+    page_id: { type: "uuid", references: "pages(id)", onDelete: "SET NULL" },
+    issue_id: { type: "uuid", references: "issues(id)", onDelete: "SET NULL" },
+    task_type: { type: "text", notNull: true },
+    priority: { type: "int", notNull: true, default: 3 }, // 1-5
+    impact: { type: "text", notNull: true, default: "med" }, // high|med|low
+    effort_minutes: { type: "int", notNull: true, default: 30 },
+    title: { type: "text", notNull: true },
+    description: { type: "text" },
+    status: { type: "text", notNull: true, default: "todo" }, // todo|doing|done|blocked
+    created_at: { type: "timestamptz", notNull: true, default: pgm.func("now()") },
+    updated_at: { type: "timestamptz", notNull: true, default: pgm.func("now()") }
+  });
+
+  // Helpful indexes
+  pgm.createIndex("pages", ["site_id"]);
+  pgm.createIndex("issues", ["site_id", "status", "severity"]);
+  pgm.createIndex("tasks", ["site_id", "status", "priority"]);
+}
+
+export async function down(pgm) {
+  pgm.dropTable("tasks");
+  pgm.dropTable("issues");
+  pgm.dropTable("pages");
+  pgm.dropTable("sites");
+  pgm.dropTable("tenants");
+}
