@@ -1,4 +1,4 @@
 {
   "migrations-dir": "migrations",
-  "database-url": "env:DATABASE_URL"
+  "database-url": "env:postgresql://postgres:tPzTiTUYYKiCViLRpvfunWJkYMncuCPB@postgres.railway.internal:5432/railway"
 }
